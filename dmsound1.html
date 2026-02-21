@@ -1,4 +1,143 @@
-<!-- DM Player HTML (티스토리 iframe용) -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DM Player</title>
+
+<style>
+body{
+  margin:0;
+  padding:0;
+  background:transparent;
+  font-family:sans-serif;
+}
+
+.wrapper{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
+
+.profile{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.bubble{
+  background:#3498db;
+  padding:14px 18px;
+  border-radius:40px;
+  width:260px;
+  display:flex;
+  align-items:center;
+}
+
+.playArea{
+  flex:0 0 30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+canvas{
+  flex:1;
+  margin:0 8px;
+}
+
+.time{
+  font-size:14px;
+  color:white;
+  font-weight:500;
+  width:40px;
+  text-align:right;
+}
+
+button{
+  border:none;
+  background:none;
+  cursor:pointer;
+  padding:0;
+}
+
+/* 확대 버튼 */
+.expandCircle{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:#eee;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.outsideTime{
+  font-size:16px;
+  color:#8a8a8a;
+  font-weight:500;
+}
+
+/* ===== 팝업 ===== */
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:black;
+  z-index:999;
+}
+
+.viewer{
+  position:relative;
+  width:100%;
+  height:100%;
+}
+
+.viewerTop{
+  position:absolute;
+  top:20px;
+  left:0;
+  right:0;
+  display:flex;
+  justify-content:space-between;
+  padding:0 20px;
+  color:white;
+  font-size:24px;
+  z-index:10;
+}
+
+.viewerCenter{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+}
+
+.viewerImage{
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+video{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  max-width:100%;
+  max-height:100vh;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+}
+</style>
+</head>
+
+<body>
+
 <div class="wrapper">
 
   <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEic-1Xale3WcJcXQaFPE0acXo7gj_9QBz3pKu8lnZ2BkG2XA12Le9oLfTLuGWiXQF8-q3P3f2TG_spnbL8FikU0rt8Ol4UNjER0jw-1u41cQ5byyWa2TmJYpMl0d_tnoX11GxrDq-XM08uMPzvQEe8kE0bA0IE5HH-zitu2ncgDFiKbGM8xSAaeTHObpqCw/s1024/R1280x0.jpeg" class="profile">
@@ -32,26 +171,40 @@
       </div>
 
       <!-- 확대 버튼 -->
-      <button id="expandBtn" class="expandCircle">
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <path d="M9 3H3V9M3 3L10 10" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M15 21H21V15M21 21L14 14" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+
+<button id="expandBtn" class="expandCircle">
+  <svg width="22" height="22" viewBox="0 0 24 24">
+    <!-- 왼쪽 위 화살표 -->
+    <path d="M9 3H3V9M3 3L10 10"
+      stroke="#000"
+      stroke-width="2.5"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+      
+    <!-- 오른쪽 아래 화살표 -->
+    <path d="M15 21H21V15M21 21L14 14"
+      stroke="#000"
+      stroke-width="2.5"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+  </svg>
+</button>
 
       <!-- 전체 시간 -->
-      <div id="outsideDuration" class="outsideTime">18:11</div>
+      <div id="outsideDuration" class="outsideTime">00:00</div>
 
     </div>
   </div>
 </div>
 
-<!-- 오디오 -->
+<!-- 오디오 (파형용) -->
 <audio id="voiceAudio" crossorigin="anonymous">
   <source src="https://cdn.jsdelivr.net/gh/impaulofview/DMaudio-files/240624_1.mp3" type="audio/mpeg">
 </audio>
 
-<!-- 팝업 영상 -->
+<!-- 팝업 -->
 <div id="modal" class="modal">
   <div class="viewer">
 
@@ -60,29 +213,16 @@
       <button id="downloadVideo">⬇</button>
     </div>
 
+    <div class="viewerCenter">
+      <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEic-1Xale3WcJcXQaFPE0acXo7gj_9QBz3pKu8lnZ2BkG2XA12Le9oLfTLuGWiXQF8-q3P3f2TG_spnbL8FikU0rt8Ol4UNjER0jw-1u41cQ5byyWa2TmJYpMl0d_tnoX11GxrDq-XM08uMPzvQEe8kE0bA0IE5HH-zitu2ncgDFiKbGM8xSAaeTHObpqCw/s1024/R1280x0.jpeg" class="viewerImage">
+    </div>
+
     <video id="videoPlayer" controls>
       <source src="https://cdn.jsdelivr.net/gh/impaulofview/DMaudio-files/240624_1.mp4" type="video/mp4">
     </video>
 
   </div>
 </div>
-
-<style>
-body{margin:0;padding:0;font-family:sans-serif;background:transparent}
-.wrapper{display:flex;align-items:flex-start;gap:8px}
-.profile{width:28px;height:28px;border-radius:50%;object-fit:cover}
-.bubble{background:#3498db;padding:14px 18px;border-radius:40px;width:260px;display:flex;align-items:center}
-.playArea{flex:0 0 30px;display:flex;align-items:center;justify-content:center}
-canvas{flex:1;margin:0 8px}
-.time{font-size:14px;color:white;font-weight:500;width:40px;text-align:right}
-button{border:none;background:none;cursor:pointer;padding:0}
-.expandCircle{width:44px;height:44px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center}
-.outsideTime{font-size:16px;color:#8a8a8a;font-weight:500}
-.modal{display:none;position:fixed;inset:0;background:black;z-index:999}
-.viewer{position:relative;width:100%;height:100%}
-.viewerTop{position:absolute;top:20px;left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;color:white;font-size:24px;z-index:10}
-video{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:100%;max-height:100vh;width:auto;height:auto;object-fit:contain}
-</style>
 
 <script>
 const audio=document.getElementById("voiceAudio");
@@ -141,12 +281,13 @@ function formatTime(t){
 
 playBtn.onclick=()=>{
   if(audio.paused){
-    audio.currentTime = 0;
+    audio.currentTime = 0;   // 0초부터 시작
     audio.play();
   }else{
     audio.pause();
   }
 };
+
 
 audio.onplay=()=>{
   playIcon.style.display="none";
@@ -164,25 +305,27 @@ audio.ontimeupdate=()=>{
     timeDisplay.textContent=formatTime(audio.currentTime);
   }
 };
-
 audio.onloadedmetadata=()=>{
-  outsideDuration.textContent = "18:11"; 
-  if(audio.duration){
-    timeDisplay.textContent = formatTime(audio.duration); 
+  outsideDuration.textContent = "18:11"; // 👈 원하는 고정 시간
+
+    if(audio.duration){
+    timeDisplay.textContent = formatTime(audio.duration); // 👈 처음에 전체 길이 표시
   }
 };
 
-expandBtn.onclick=()=>{
-  modal.style.display="block";
+expandBtn.onclick = () => {
+  modal.style.display = "block";
+  video.currentTime = 0; // 영상 처음부터 재생
   video.play();
+};
+
+video.onended = () => {
+  modal.style.display = "none"; // 영상 끝나면 팝업 닫기
 };
 
 closeBtn.onclick=()=>{
   modal.style.display="none";
   video.pause();
-  video.currentTime = 0; 
-  drawWave(audio.currentTime/audio.duration);
-  timeDisplay.textContent = formatTime(audio.duration);
 };
 
 downloadVideo.onclick=()=>{
@@ -194,3 +337,6 @@ downloadVideo.onclick=()=>{
 
 audio.addEventListener("loadeddata",generateWaveform);
 </script>
+
+</body>
+</html>
