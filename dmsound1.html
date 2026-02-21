@@ -108,11 +108,13 @@ button{
   z-index:10;
 }
 
-.viewerCenter{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+.viewerCenter {
+  position: relative;          /* 절대 위치 제거 */
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;     /* 중앙이 아닌 상단 정렬 */
+  padding-top: 20px;           /* 영상 위쪽만 살짝 띄움 */
 }
 
 .viewerImage{
@@ -122,16 +124,11 @@ button{
   object-fit:cover;
 }
 
-video{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  max-width:100%;
-  max-height:100vh;
-  width:auto;
-  height:auto;
-  object-fit:contain;
+video {
+  position: static;  /* 절대 위치 제거 */
+  width: 90%;        /* 최대 폭 설정 */
+  height: auto;      /* 비율 유지 */
+  object-fit: contain;
 }
 </style>
 </head>
