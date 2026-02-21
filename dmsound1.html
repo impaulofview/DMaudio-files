@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DM Audio</title>
+
+<style>
+body{
+  margin:0;
+  padding:0;
+  background:transparent;
+  font-family:sans-serif;
+}
+
+.wrapper{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
+
+.profile{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.bubble{
+  background:#5aa6dd;
+  padding:14px 18px;
+  border-radius:40px;
+  width:260px;
+  display:flex;
+  align-items:center;
+  position:relative;
+}
+
+.playArea{
+  flex:0 0 30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+canvas{
+  flex:1;
+  margin:0 8px;
+}
+
+.time{
+  font-size:14px;
+  color:white;
+  font-weight:500;
+  width:40px;
+  text-align:right;
+}
+
+button{
+  border:none;
+  background:none;
+  cursor:pointer;
+  padding:0;
+}
+
+.fixedTime{
+  position:absolute;
+  right:12px;
+  bottom:-16px;
+  font-size:10px;
+  color:#999;
+}
+
+/* 팝업 */
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+
+.modalContent{
+  background:white;
+  padding:16px;
+  border-radius:14px;
+  width:92%;
+  max-width:420px;
+}
+
+.modal video{
+  width:100%;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+
+.downloadBtn{
+  width:100%;
+  padding:10px;
+  background:#5aa6dd;
+  color:white;
+  border-radius:8px;
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+  <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEic-1Xale3WcJcXQaFPE0acXo7gj_9QBz3pKu8lnZ2BkG2XA12Le9oLfTLuGWiXQF8-q3P3f2TG_spnbL8FikU0rt8Ol4UNjER0jw-1u41cQ5byyWa2TmJYpMl0d_tnoX11GxrDq-XM08uMPzvQEe8kE0bA0IE5HH-zitu2ncgDFiKbGM8xSAaeTHObpqCw/s1024/R1280x0.jpeg" class="profile">
+
+  <div>
+    <div style="font-size:12px;font-weight:800;color:#6f7782;margin-bottom:6px;">
+      AHN HYO SEOP
+    </div>
+
+    <div class="bubble">
+      <div class="playArea">
+        <button id="playBtn">
+          <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24">
+            <path d="M8 5 L19 12 L8 19 Z" fill="white"/>
+          </svg>
+          <svg id="pauseIcon" width="18" height="18" viewBox="0 0 24 24" style="display:none;">
+            <rect x="6" y="5" width="4" height="14" rx="2" fill="white"/>
+            <rect x="14" y="5" width="4" height="14" rx="2" fill="white"/>
+          </svg>
+        </button>
+      </div>
+
+      <canvas id="waveCanvas" width="120" height="30"></canvas>
+
+      <!-- 확대 아이콘 -->
+      <button id="expandBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
+          stroke="white" stroke-width="2"
+          fill="none" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <div id="timeDisplay" class="time">0:00</div>
+      <div id="fixedTime" class="fixedTime">0:00</div>
+    </div>
+  </div>
+</div>
+
+<!-- 오디오 (파형용) -->
+<audio id="voiceAudio" crossorigin="anonymous">
+  <source src="https://cdn.jsdelivr.net/gh/impaulofview/DMaudio-files/240624_1.mp3" type="audio/mpeg">
+</audio>
+
+<!-- 팝업 -->
+<div id="modal" class="modal">
+  <div class="modalContent">
+    <video id="videoPlayer" controls>
+      <source src="https://cdn.jsdelivr.net/gh/impaulofview/DMaudio-files/240624_1.mp4" type="video/mp4">
+    </video>
+
+    <button class="downloadBtn" id="downloadVideo">
+      영상 다운로드
+    </button>
+  </div>
+</div>
+
+<script>
+const audio=document.getElementById("voiceAudio");
+const canvas=document.getElementById("waveCanvas");
+const ctx=canvas.getContext("2d");
+const playBtn=document.getElementById("playBtn");
+const playIcon=document.getElementById("playIcon");
+const pauseIcon=document.getElementById("pauseIcon");
+const timeDisplay=document.getElementById("timeDisplay");
+const fixedTime=document.getElementById("fixedTime");
+const expandBtn=document.getElementById("expandBtn");
+const modal=document.getElementById("modal");
+const downloadVideo=document.getElementById("downloadVideo");
+
+let waveform=[];
+const bars=50;
+
+async function generateWaveform(){
+  const response=await fetch(audio.currentSrc);
+  const arrayBuffer=await response.arrayBuffer();
+  const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const buffer=await audioCtx.decodeAudioData(arrayBuffer);
+  const rawData=buffer.getChannelData(0);
+  const blockSize=Math.floor(rawData.length/bars);
+
+  waveform=[];
+  for(let i=0;i<bars;i++){
+    let sum=0;
+    for(let j=0;j<blockSize;j++){
+      sum+=Math.abs(rawData[(i*blockSize)+j]);
+    }
+    waveform.push((sum/blockSize)*45);
+  }
+  drawWave(0);
+}
+
+function drawWave(progress){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const barWidth=canvas.width/bars;
+  for(let i=0;i<bars;i++){
+    const height=waveform[i]||2;
+    const x=i*barWidth;
+    const y=canvas.height/2-height/2;
+    ctx.fillStyle=i<bars*progress?"white":"rgba(255,255,255,0.35)";
+    ctx.fillRect(x,y,barWidth-1.5,height);
+  }
+}
+
+function formatTime(t){
+  const m=Math.floor(t/60);
+  const s=Math.floor(t%60);
+  return m+":"+(s<10?"0"+s:s);
+}
+
+playBtn.onclick=()=>audio.paused?audio.play():audio.pause();
+
+audio.onplay=()=>{
+  playIcon.style.display="none";
+  pauseIcon.style.display="block";
+};
+
+audio.onpause=()=>{
+  playIcon.style.display="block";
+  pauseIcon.style.display="none";
+};
+
+audio.ontimeupdate=()=>{
+  if(audio.duration){
+    drawWave(audio.currentTime/audio.duration);
+    timeDisplay.textContent=formatTime(audio.currentTime);
+  }
+};
+
+audio.onloadedmetadata=()=>{
+  if(audio.duration){
+    fixedTime.textContent=formatTime(audio.duration);
+  }
+};
+
+expandBtn.onclick=()=>{
+  modal.style.display="flex";
+};
+
+modal.onclick=(e)=>{
+  if(e.target===modal){
+    modal.style.display="none";
+  }
+};
+
+downloadVideo.onclick=()=>{
+  const link=document.createElement("a");
+  link.href="https://cdn.jsdelivr.net/gh/impaulofview/DMaudio-files/240624_1.mp4";
+  link.download="video.mp4";
+  link.click();
+};
+
+audio.addEventListener("loadeddata",generateWaveform);
+</script>
+
+</body>
+</html>
